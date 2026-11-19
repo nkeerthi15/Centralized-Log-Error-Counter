@@ -1,0 +1,54 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: centralized-log-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: centralized-log-bridge
+  template:
+    metadata:
+      labels:
+        app: centralized-log-bridge
+    spec:
+      containers:
+        - name: bridge
+          image: centralized-log-bridge:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: aws-iot-certs
+              mountPath: /app/certs
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /count
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /count
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: aws-iot-certs
+          secret:
+            secretName: aws-iot-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: centralized-log-bridge
+spec:
+  selector:
+    app: centralized-log-bridge
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP

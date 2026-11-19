@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogPulse - Centralized Log Error Counter Dashboard</title>
+  <!-- Chart.js for Error Trend visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">LogPulse</span>
+          <span class="brand-sub">Cloud Monitoring</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#overview" class="nav-item active" data-target="overview" id="nav-overview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+            <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+            <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+            <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+          </svg>
+          <span>Overview</span>
+        </a>
+        <a href="#analytics" class="nav-item" data-target="analytics" id="nav-analytics">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <span>Analytics</span>
+        </a>
+        <a href="#events" class="nav-item" data-target="events" id="nav-events">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Recent Events</span>
+        </a>
+        <a href="#infrastructure" class="nav-item" data-target="infrastructure" id="nav-infrastructure">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="8" x="2" y="2" rx="2" ry="2"></rect>
+            <rect width="20" height="8" x="2" y="14" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+          <span>Infrastructure</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="project-badge">
+          <span class="project-tag">Cloud Computing Demo</span>
+          <span class="project-desc">Bridge v1.2 &bull; Port 5000</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <!-- Top Navigation -->
+      <header class="top-nav">
+        <div class="page-title-box">
+          <h1 class="page-title" id="main-page-title">Centralized Log Error Counter</h1>
+          <p class="page-subtitle" id="main-page-subtitle">Real-time AWS IoT Core &bull; CloudWatch &bull; Kubernetes &bull; ESP32 Bridge</p>
+        </div>
+
+        <div class="top-nav-actions">
+          <!-- System Status Pill -->
+          <div class="status-pill" id="system-status-pill">
+            <span class="status-dot pulsing"></span>
+            <span class="status-text" id="system-status-text">Connecting...</span>
+          </div>
+
+          <!-- Last Updated & Auto-refresh -->
+          <div class="refresh-indicator" title="Auto-refreshes every 10 seconds">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span id="last-updated-text">Updating...</span>
+            <span class="refresh-counter" id="refresh-timer">(10s)</span>
+          </div>
+
+          <!-- Manual Refresh Button -->
+          <button class="btn btn-secondary btn-refresh" id="refresh-btn" aria-label="Refresh Dashboard">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="refresh-icon">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Alert Bar for Connection Errors -->
+      <div class="alert-banner" id="api-error-banner" style="display: none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="api-error-message">Unable to reach Flask bridge. Retrying automatically...</span>
+      </div>
+
+      <!-- Main Dashboard Content -->
+      <main class="content-container">
+        
+        <!-- VIEW 1: OVERVIEW -->
+        <section id="overview" class="dashboard-view active">
+          <div class="section-header">
+            <h2 class="section-heading">Operational Metrics</h2>
+            <span class="section-note">Live counter feed from AWS CloudWatch through IoT Core</span>
+          </div>
+
+          <div class="metrics-grid">
+            <!-- Card 1: Errors Last 60 Minutes -->
+            <div class="metric-card" id="card-errors-60m">
+              <div class="metric-card-header">
+                <div class="metric-title-group">
+                  <span class="metric-label">Errors in Last 60 Minutes</span>
+                  <span class="metric-source-tag">Live Feed (/count)</span>
+                </div>
+                <div class="metric-icon-box alert-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-value-container">
+                <span class="metric-value" id="val-errors-60m">-</span>
+                <span class="metric-unit">events</span>
+              </div>
+              <div class="metric-footer">
+                <span class="metric-badge badge-neutral" id="badge-errors-level">Normal</span>
+                <span class="metric-subtext">AWS CloudWatch &rarr; Lambda &rarr; IoT Core</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Errors Today -->
+            <div class="metric-card" id="card-errors-today">
+              <div class="metric-card-header">
+                <div class="metric-title-group">
+                  <span class="metric-label">Errors Today</span>
+                  <span class="metric-source-tag">Aggregation</span>
+                </div>
+                <div class="metric-icon-box neutral-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-value-container">
+                <span class="metric-value metric-value-unavailable" id="val-errors-today">Unavailable</span>
+              </div>
+              <div class="metric-footer">
+                <span class="metric-badge badge-unavailable">Pipeline Limitation</span>
+                <span class="metric-subtext" title="Lambda publishes 60-min window only">Daily aggregation not configured</span>
+              </div>
+            </div>
+
+            <!-- Card 3: AWS IoT Connection -->
+            <div class="metric-card" id="card-aws-iot">
+              <div class="metric-card-header">
+                <div class="metric-title-group">
+                  <span class="metric-label">AWS IoT Core MQTT</span>
+                  <span class="metric-source-tag">TLS 8883</span>
+                </div>
+                <div class="metric-icon-box iot-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a10 10 0 0 0-7.55 16.55L3 21l2.45-1.45A10 10 0 1 0 12 2z"></path>
+                    <path d="M8.5 10a3.5 3.5 0 0 1 7 0"></path>
+                    <line x1="12" y1="13" x2="12.01" y2="13"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-value-container">
+                <span class="metric-value status-value" id="val-aws-iot">Checking...</span>
+              </div>
+              <div class="metric-footer">
+                <span class="metric-badge badge-success" id="badge-aws-iot">MQTT Connected</span>
+                <span class="metric-subtext" id="topic-aws-iot">centralized/logs/errors</span>
+              </div>
+            </div>
+
+            <!-- Card 4: ESP32 Device Status -->
+            <div class="metric-card" id="card-esp32">
+              <div class="metric-card-header">
+                <div class="metric-title-group">
+                  <span class="metric-label">ESP32 Device Status</span>
+                  <span class="metric-source-tag">TM1637 Display</span>
+                </div>
+                <div class="metric-icon-box hardware-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  </svg>
+                </div>
+              </div>
+              <div class="metric-value-container">
+                <span class="metric-value status-value-unmonitored" id="val-esp32">Unmonitored</span>
+              </div>
+              <div class="metric-footer">
+                <span class="metric-badge badge-unmonitored">Pull Mode (Relay)</span>
+                <span class="metric-subtext" title="ESP32 pulls from relay; device does not report heartbeat">No heartbeat telemetry</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overview Pipeline Summary Card -->
+          <div class="card overview-summary-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">System Architecture Snapshot</h3>
+                <p class="card-subtitle">End-to-end cloud pipeline integration highlights</p>
+              </div>
+              <span class="live-pill"><span class="status-dot green"></span> Live Sync (10s)</span>
+            </div>
+            <div class="overview-summary-body">
+              <div class="summary-stat-item">
+                <span class="summary-stat-label">Upstream Cloud</span>
+                <span class="summary-stat-val">CloudWatch &rarr; Lambda</span>
+                <span class="summary-stat-desc">Rolling 60m error filter</span>
+              </div>
+              <div class="summary-stat-item">
+                <span class="summary-stat-label">IoT Transport</span>
+                <span class="summary-stat-val">MQTT over TLS 8883</span>
+                <span class="summary-stat-desc">centralized/logs/errors</span>
+              </div>
+              <div class="summary-stat-item">
+                <span class="summary-stat-label">Bridge Runtime</span>
+                <span class="summary-stat-val">Python 3.13 Flask</span>
+                <span class="summary-stat-desc">Port 5000 &bull; /count</span>
+              </div>
+              <div class="summary-stat-item">
+                <span class="summary-stat-label">Physical Edge</span>
+                <span class="summary-stat-val">ESP32 + TM1637</span>
+                <span class="summary-stat-desc">Wokwi relay on port 8000</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 2: ANALYTICS -->
+        <section id="analytics" class="dashboard-view" style="display: none;">
+          <div class="section-header">
+            <h2 class="section-heading">Error Analytics</h2>
+            <span class="section-note">Real-time session timeline and error count trend progression</span>
+          </div>
+
+          <div class="card chart-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Error Activity Trends</h3>
+                <p class="card-subtitle">Real-time session timeline &bull; Tracked from live API updates</p>
+              </div>
+              <div class="chart-controls">
+                <span class="live-pill"><span class="status-dot green"></span> Live Polling (10s)</span>
+              </div>
+            </div>
+
+            <div class="chart-body">
+              <div class="chart-canvas-wrapper" id="chart-wrapper">
+                <canvas id="errorTrendChart"></canvas>
+              </div>
+              <!-- Empty state shown when not enough historical records are collected -->
+              <div class="chart-empty-state" id="chart-empty-state" style="display: none;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                <p class="empty-title">Historical Trends Awaiting Data Stream</p>
+                <p class="empty-desc">The bridge does not store persistent historical time-series in a database. Data points will chart progressively during this active session.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 3: RECENT EVENTS -->
+        <section id="events" class="dashboard-view" style="display: none;">
+          <div class="section-header">
+            <h2 class="section-heading">Recent Log Events</h2>
+            <span class="section-note">Granular error event stream inspection</span>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">Recent Ingested Log Events</h3>
+                <p class="card-subtitle">Granular error event stream inspection</p>
+              </div>
+              <span class="table-count-tag" id="event-count-tag">0 Events Logged</span>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Severity</th>
+                    <th>Event Message</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="events-table-body">
+                  <!-- Empty state rendered when individual logs are not streamed -->
+                  <tr>
+                    <td colspan="5" class="empty-table-cell">
+                      <div class="empty-state-box">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="12" y1="8" x2="12" y2="12"></line>
+                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <p class="empty-table-title">No Individual Log Event Stream Available</p>
+                        <p class="empty-table-desc">
+                          The current cloud pipeline architecture transmits aggregated 60-minute numerical error counts 
+                          (<code>{"errors_last_60_minutes": N}</code>) over AWS IoT MQTT. Individual log line streaming is not configured in this topic.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 4: INFRASTRUCTURE -->
+        <section id="infrastructure" class="dashboard-view" style="display: none;">
+          <div class="section-header">
+            <h2 class="section-heading">Infrastructure Health</h2>
+            <span class="section-note">Component verification status across Cloud, Edge, and Container layers</span>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">End-to-End Pipeline Infrastructure</h3>
+                <p class="card-subtitle">Component verification status across Cloud, Edge, and Container layers</p>
+              </div>
+              <span class="badge-verified-info">Verified vs Unverified components explicitly marked</span>
+            </div>
+
+            <div class="infra-grid">
+              <!-- 1. AWS CloudWatch -->
+              <div class="infra-item">
+                <div class="infra-icon-col">
+                  <span class="component-icon aws-cloudwatch">CW</span>
+                </div>
+                <div class="infra-info-col">
+                  <div class="infra-title-row">
+                    <span class="infra-name">AWS CloudWatch Logs</span>
+                    <span class="status-badge badge-active" id="badge-cw">Upstream Source</span>
+                  </div>
+                  <p class="infra-desc">Aggregates application error logs and triggers CloudWatch filter metric.</p>
+                  <div class="infra-meta">
+                    <span>Layer: Cloud Ingestion</span> &bull; <span>Status: Operational (Upstream)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. AWS Lambda -->
+              <div class="infra-item">
+                <div class="infra-icon-col">
+                  <span class="component-icon aws-lambda">&lambda;</span>
+                </div>
+                <div class="infra-info-col">
+                  <div class="infra-title-row">
+                    <span class="infra-name">AWS Lambda Processor</span>
+                    <span class="status-badge badge-active" id="badge-lambda">Upstream Source</span>
+                  </div>
+                  <p class="infra-desc">Executes query, computes rolling 60-min error count, publishes to IoT MQTT.</p>
+                  <div class="infra-meta">
+                    <span>Layer: Cloud Compute</span> &bull; <span>Format: JSON payload</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. AWS IoT Core -->
+              <div class="infra-item">
+                <div class="infra-icon-col">
+                  <span class="component-icon aws-iot">IoT</span>
+                </div>
+                <div class="infra-info-col">
+                  <div class="infra-title-row">
+                    <span class="infra-name">AWS IoT Core Broker</span>
+                    <span class="status-badge badge-success" id="badge-infra-iot">Verified Connected</span>
+                  </div>
+                  <p class="infra-desc">MQTT broker delivering telemetry messages on topic <code>centralized/logs/errors</code>.</p>
+                  <div class="infra-meta">
+                    <span id="infra-iot-endpoint">Endpoint: a1teqxjsbgrcm7-ats.iot.us-east-1.amazonaws.com</span> &bull; <span>TLS v1.2</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. Flask MQTT Bridge -->
+              <div class="infra-item">
+                <div class="infra-icon-col">
+                  <span class="component-icon flask-bridge">Py</span>
+                </div>
+                <div class="infra-info-col">
+                  <div class="infra-title-row">
+                    <span class="infra-name">Flask MQTT Bridge</span>
+                    <span class="status-badge badge-success" id="badge-flask">Verified Healthy</span>
+                  </div>
+                  <p class="infra-desc">Subscribes to MQTT feed, maintains latest count in memory, exposes <code>/count</code> API.</p>
+                  <div class="infra-meta">
+                    <span>Runtime: Python 3.13</span> &bull; <span>Port: 5000</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5. Docker Container -->
+              <div class="infra-item">
+                <div class="infra-icon-col">
+                  <span class="component-icon docker">Doc</span>
+                </div>
+                <div class="infra-info-col">
+                  <div class="infra-title-row">
+                    <span class="infra-name">Docker Engine</span>
+                    <span class="status-badge badge-info" id="badge-docker">Containerized Spec</span>
+                  </div>
+                  <p class="infra-desc">Encapsulates Python runtime, dependencies, and bridge code via <code>Dockerfile</code>.</p>
+                  <div class="infra-meta">
+                    <span>Image: centralized-log-bridge:latest</span> &bull; <span>Base: python:3.13-slim</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 6. Kubernetes / Minikube -->
+              <div class="infra-item">
+                <div class="infra-icon-col">
+                  <span class="component-icon k8s">K8s</span>
+                </div>
+                <div class="infra-info-col">
+                  <div class="infra-title-row">
+                    <span class="infra-name">Kubernetes (Minikube)</span>
+                    <span class="status-badge badge-info" id="badge-k8s">Deployment Defined</span>
+                  </div>
+                  <p class="infra-desc">Orchestrates bridge pod with liveness/readiness probes and secret volume mounts.</p>
+                  <div class="infra-meta">
+                    <span>Replicas: 1</span> &bull; <span>Service: ClusterIP 5000</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 7. ESP32 Physical / Wokwi Simulator -->
+              <div class="infra-item">
+                <div class="infra-icon-col">
+                  <span class="component-icon esp32">ESP</span>
+                </div>
+                <div class="infra-info-col">
+                  <div class="infra-title-row">
+                    <span class="infra-name">ESP32 &amp; TM1637 Display</span>
+                    <span class="status-badge badge-unmonitored" id="badge-esp32">Unmonitored Client</span>
+                  </div>
+                  <p class="infra-desc">Wokwi simulator polling HTTP relay on port 8000; does not send upstream heartbeat.</p>
+                  <div class="infra-meta">
+                    <span>Mode: Pull-only</span> &bull; <span>Relay URL: http://127.0.0.1:8000/count</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Dashboard Footer -->
+      <footer class="dashboard-footer">
+        <div class="footer-left">
+          <span><strong>LogPulse</strong> &bull; Centralized Log Error Counter</span>
+          <span class="footer-dot">&bull;</span>
+          <span>Light Theme Enterprise Edition</span>
+        </div>
+        <div class="footer-right">
+          <span>Bridge Endpoint: <code>http://127.0.0.1:5000/count</code></span>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
