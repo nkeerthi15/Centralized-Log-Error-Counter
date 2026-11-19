@@ -1,3 +1,4 @@
+import os
 import json
 import ssl
 import threading
@@ -168,5 +169,6 @@ if __name__ == "__main__":
     # Record initial startup point in history
     append_history(latest_count)
     threading.Thread(target=start_mqtt, daemon=True).start()
-    print("LogPulse Centralized Log Bridge starting on http://0.0.0.0:5000")
-    app.run(host="0.0.0.0", port=5000)
+    WEB_PORT = int(os.environ.get("PORT", 10000))
+print(f"LogPulse dashboard starting on http://0.0.0.0:{WEB_PORT}")
+app.run(host="0.0.0.0", port=WEB_PORT)
