@@ -12,7 +12,7 @@ PORT = 8883
 TOPIC = "centralized/logs/errors"
 
 BASE_DIR = Path(__file__).resolve().parent
-CERT_DIR = BASE_DIR / "certs"
+CERT_DIR = Path("/etc/secrets") if Path("/etc/secrets/certificate.crt").exists() else BASE_DIR / "certs"
 
 CERT = str(CERT_DIR / "certificate.crt")
 KEY = str(CERT_DIR / "private.key.pem")
